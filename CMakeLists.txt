@@ -42,7 +42,11 @@ find_package(
              sensor_msgs
              message_generation)
 
-add_service_files(FILES save_vdb_volume.srv)
+add_service_files(
+  FILES
+  save_vdb_volume.srv
+  TogglePclListening.srv
+  )
 
 generate_messages()
 

@@ -28,6 +28,7 @@
 #include "Transform.hpp"
 #include "vdbfusion/VDBVolume.h"
 #include "vdbfusion_ros/save_vdb_volume.h"
+#include "vdbfusion_ros/TogglePclListening.h"
 
 namespace vdbfusion {
 class VDBVolumeNode {
@@ -39,11 +40,14 @@ private:
     void Integrate(const sensor_msgs::PointCloud2& pcd);
     bool saveVDBVolume(vdbfusion_ros::save_vdb_volume::Request& path,
                        vdbfusion_ros::save_vdb_volume::Response& response);
+    bool togglePclListening(vdbfusion_ros::TogglePclListening::Request& path,
+                       vdbfusion_ros::TogglePclListening::Response& response);
 
 private:
     ros::NodeHandle nh_;
     ros::Subscriber sub_;
     ros::ServiceServer srv_;
+    ros::ServiceServer toggle_pcl_srv_;
     Transform tf_;
     ros::Duration timestamp_tolerance_;
 
@@ -51,6 +55,7 @@ private:
     VDBVolume vdb_volume_;
 
     // PointCloud Processing
+    bool pcl_listening_;
     bool preprocess_;
     bool apply_pose_;
     float min_range_;

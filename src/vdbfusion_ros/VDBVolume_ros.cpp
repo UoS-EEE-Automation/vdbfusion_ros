@@ -71,7 +71,11 @@ vdbfusion::VDBVolume vdbfusion::VDBVolumeNode::InitVDBVolume() {
     return vdb_volume;
 }
 
-vdbfusion::VDBVolumeNode::VDBVolumeNode() : vdb_volume_(InitVDBVolume()), tf_(nh_) {
+vdbfusion::VDBVolumeNode::VDBVolumeNode() : 
+    vdb_volume_(InitVDBVolume()),
+    tf_(nh_),
+    pcl_listening_(false)
+{
     openvdb::initialize();
 
     std::string pcl_topic;
@@ -92,29 +96,37 @@ vdbfusion::VDBVolumeNode::VDBVolumeNode() : vdb_volume_(InitVDBVolume()), tf_(nh
 
     sub_ = nh_.subscribe(pcl_topic, queue_size, &vdbfusion::VDBVolumeNode::Integrate, this);
     srv_ = nh_.advertiseService("/save_vdb_volume", &vdbfusion::VDBVolumeNode::saveVDBVolume, this);
+    toggle_pcl_srv_ = nh_.advertiseService("/toggle_pcl_listening", &vdbfusion::VDBVolumeNode::togglePclListening, this);
 
     ROS_INFO("Use '/save_vdb_volume' service to save the integrated volume");
 }
 
 void vdbfusion::VDBVolumeNode::Integrate(const sensor_msgs::PointCloud2& pcd) {
-    geometry_msgs::TransformStamped transform;
-    sensor_msgs::PointCloud2 pcd_out;
+    if (pcl_listening_)
+    {
+        geometry_msgs::TransformStamped transform;
+        sensor_msgs::PointCloud2 pcd_out;
 
-    if (tf_.lookUpTransform(pcd.header.stamp, timestamp_tolerance_, transform)) {
-        ROS_INFO("Transform available");
-        if (apply_pose_) {
-            tf2::doTransform(pcd, pcd_out, transform);
-        }
-        auto scan = pcl2SensorMsgToEigen(pcd_out);
+        if (tf_.lookUpTransform(pcd.header.stamp, timestamp_tolerance_, transform)) {
+            ROS_INFO_THROTTLE(30, "Transform available");
+            if (apply_pose_) {
+                tf2::doTransform(pcd, pcd_out, transform);
+            }
+            auto scan = pcl2SensorMsgToEigen(pcd_out);
 
-        if (preprocess_) {
-            PreProcessCloud(scan, min_range_, max_range_);
+            if (preprocess_) {
+                PreProcessCloud(scan, min_range_, max_range_);
+            }
+            const auto& x = transform.transform.translation.x;
+            const auto& y = transform.transform.translation.y;
+            const auto& z = transform.transform.translation.z;
+            auto origin = Eigen::Vector3d(x, y, z);
+            vdb_volume_.Integrate(scan, origin, [](float /*unused*/) { return 1.0; });
+        } else {
+            ROS_INFO_THROTTLE(30, "Transform not available");
         }
-        const auto& x = transform.transform.translation.x;
-        const auto& y = transform.transform.translation.y;
-        const auto& z = transform.transform.translation.z;
-        auto origin = Eigen::Vector3d(x, y, z);
-        vdb_volume_.Integrate(scan, origin, [](float /*unused*/) { return 1.0; });
+    } else {
+        ROS_INFO_THROTTLE(30, "Currently not parsing pointclouds...");
     }
 }
 
@@ -139,6 +151,20 @@ bool vdbfusion::VDBVolumeNode::saveVDBVolume(vdbfusion_ros::save_vdb_volume::Req
     }
     igl::write_triangle_mesh(volume_name + "_mesh.ply", V, F, igl::FileEncoding::Binary);
     ROS_INFO("Done saving the mesh and VDB grid files");
+    return true;
+}
+
+bool vdbfusion::VDBVolumeNode::togglePclListening(vdbfusion_ros::TogglePclListening::Request& request,
+                                             vdbfusion_ros::TogglePclListening::Response& response) {
+    pcl_listening_ = request.listen;
+    if (pcl_listening_)
+    {
+        ROS_INFO("PCL listening set to: ON");
+    }
+    else
+    {
+        ROS_INFO("PCL listening set to: OFF");
+    }
     return true;
 }
 
