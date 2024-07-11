@@ -157,12 +157,10 @@ bool vdbfusion::VDBVolumeNode::saveVDBVolume(vdbfusion_ros::save_vdb_volume::Req
 bool vdbfusion::VDBVolumeNode::togglePclListening(vdbfusion_ros::TogglePclListening::Request& request,
                                              vdbfusion_ros::TogglePclListening::Response& response) {
     pcl_listening_ = request.listen;
-    if (pcl_listening_)
-    {
+    if (pcl_listening_) {
         ROS_INFO("PCL listening set to: ON");
     }
-    else
-    {
+    else {
         ROS_INFO("PCL listening set to: OFF");
     }
     return true;
