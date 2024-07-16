@@ -74,12 +74,12 @@ vdbfusion::VDBVolume vdbfusion::VDBVolumeNode::InitVDBVolume() {
 vdbfusion::VDBVolumeNode::VDBVolumeNode() : 
     vdb_volume_(InitVDBVolume()),
     tf_(nh_),
-    pcl_listening_(false)
+    //pcl_listening_(false),
+    pcl_listening_(true)
 {
     openvdb::initialize();
 
-    std::string pcl_topic;
-    nh_.getParam("/pcl_topic", pcl_topic);
+    nh_.getParam("/pcl_topic", pcl_topic_);
     nh_.getParam("/preprocess", preprocess_);
     nh_.getParam("/apply_pose", apply_pose_);
     nh_.getParam("/min_range", min_range_);
@@ -94,10 +94,12 @@ vdbfusion::VDBVolumeNode::VDBVolumeNode() :
 
     const int queue_size = 500;
 
-    sub_ = nh_.subscribe(pcl_topic, queue_size, &vdbfusion::VDBVolumeNode::Integrate, this);
+    sub_ = nh_.subscribe(pcl_topic_, queue_size, &vdbfusion::VDBVolumeNode::Integrate, this);
     srv_ = nh_.advertiseService("/save_vdb_volume", &vdbfusion::VDBVolumeNode::saveVDBVolume, this);
     toggle_pcl_srv_ = nh_.advertiseService("/toggle_pcl_listening", &vdbfusion::VDBVolumeNode::togglePclListening, this);
+    reinit_vol_srv_ = nh_.advertiseService("/reinit_volume", &vdbfusion::VDBVolumeNode::reInitVolume, this);
 
+    ROS_INFO_STREAM("Listening for data on topic: " << pcl_topic_);
     ROS_INFO("Use '/save_vdb_volume' service to save the integrated volume");
 }
 
@@ -108,7 +110,7 @@ void vdbfusion::VDBVolumeNode::Integrate(const sensor_msgs::PointCloud2& pcd) {
         sensor_msgs::PointCloud2 pcd_out;
 
         if (tf_.lookUpTransform(pcd.header.stamp, timestamp_tolerance_, transform)) {
-            ROS_INFO_THROTTLE(30, "Transform available");
+            ROS_INFO_THROTTLE(1, "Transform available");
             if (apply_pose_) {
                 tf2::doTransform(pcd, pcd_out, transform);
             }
@@ -123,7 +125,7 @@ void vdbfusion::VDBVolumeNode::Integrate(const sensor_msgs::PointCloud2& pcd) {
             auto origin = Eigen::Vector3d(x, y, z);
             vdb_volume_.Integrate(scan, origin, [](float /*unused*/) { return 1.0; });
         } else {
-            ROS_INFO_THROTTLE(30, "Transform not available");
+            ROS_INFO_THROTTLE(1, "Transform not available");
         }
     } else {
         ROS_INFO_THROTTLE(30, "Currently not parsing pointclouds...");
@@ -163,6 +165,17 @@ bool vdbfusion::VDBVolumeNode::togglePclListening(vdbfusion_ros::TogglePclListen
     else {
         ROS_INFO("PCL listening set to: OFF");
     }
+    return true;
+}
+
+bool vdbfusion::VDBVolumeNode::reInitVolume(vdbfusion_ros::ReInitVolume::Request& request,
+                                             vdbfusion_ros::ReInitVolume::Response& response) {
+    if (request.reinit) {
+        ROS_INFO("Re-initializing the volume...");
+        vdb_volume_ = InitVDBVolume();
+        ROS_INFO("Volume re-initialized");
+    }
+
     return true;
 }
 

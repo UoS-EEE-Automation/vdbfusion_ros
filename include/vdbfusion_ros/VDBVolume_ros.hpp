@@ -29,6 +29,7 @@
 #include "vdbfusion/VDBVolume.h"
 #include "vdbfusion_ros/save_vdb_volume.h"
 #include "vdbfusion_ros/TogglePclListening.h"
+#include "vdbfusion_ros/ReInitVolume.h"
 
 namespace vdbfusion {
 class VDBVolumeNode {
@@ -42,17 +43,19 @@ private:
                        vdbfusion_ros::save_vdb_volume::Response& response);
     bool togglePclListening(vdbfusion_ros::TogglePclListening::Request& path,
                        vdbfusion_ros::TogglePclListening::Response& response);
+    bool reInitVolume(vdbfusion_ros::ReInitVolume::Request& path,
+                       vdbfusion_ros::ReInitVolume::Response& response);
 
-private:
     ros::NodeHandle nh_;
     ros::Subscriber sub_;
     ros::ServiceServer srv_;
     ros::ServiceServer toggle_pcl_srv_;
+    ros::ServiceServer reinit_vol_srv_;
     Transform tf_;
     ros::Duration timestamp_tolerance_;
 
-private:
     VDBVolume vdb_volume_;
+    std::string pcl_topic_;
 
     // PointCloud Processing
     bool pcl_listening_;
