@@ -74,8 +74,7 @@ vdbfusion::VDBVolume vdbfusion::VDBVolumeNode::InitVDBVolume() {
 vdbfusion::VDBVolumeNode::VDBVolumeNode() : 
     vdb_volume_(InitVDBVolume()),
     tf_(nh_),
-    //pcl_listening_(false),
-    pcl_listening_(true)
+    pcl_listening_(false)
 {
     openvdb::initialize();
 
