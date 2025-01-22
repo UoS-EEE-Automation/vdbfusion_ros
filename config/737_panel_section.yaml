@@ -19,6 +19,6 @@ pcl_topic: "/rs_camera_1/voxel_grid/output"
 
 # Transform
 use_tf_transforms: true
-parent_frame: "pcl_crop_box_2"
+parent_frame: "pcl_crop_box_1"
 child_frame: "rs_camera_1_color_optical_frame"
 timestamp_tolerance_ns: 1000
